@@ -21,11 +21,11 @@ void createUser() {
 
     printf("Enter ID: ");
     scanf("%d", &u.id);
-    //getchar(); 
+    getchar(); 
 
     printf("Enter Name: ");
     scanf("%[^\n]", u.name); 
-    //getchar();
+    getchar();
 
     printf("Enter Age: ");
     scanf("%d", &u.age);
@@ -54,7 +54,7 @@ void readUsers() {
     fclose(fp);
 }
 
-// Function to update user by ID
+
 void updateUser() {
     int id, found = 0;
     struct User u;
@@ -116,7 +116,7 @@ void deleteUser() {
     while (fgets(line, sizeof(line), fp)) {
         if (sscanf(line, "%d|%[^|]|%d", &u.id, u.name, &u.age) == 3) {
             if (u.id == id) {
-                found = 1; // skip this record
+                found = 1; 
             } else {
                 fprintf(temp, "%d|%s|%d\n", u.id, u.name, u.age);
             }
