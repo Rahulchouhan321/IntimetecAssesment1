@@ -44,6 +44,10 @@ void readUsers() {
         printf("No users found (file does not exist).\n");
         return;
     }
+      if (!temp) {
+        printf("No users found (file does not exist).\n");
+        return;
+    }
 
     printf("\n--- User Records ---\n");
     while (fgets(line, sizeof(line), fp)) {
