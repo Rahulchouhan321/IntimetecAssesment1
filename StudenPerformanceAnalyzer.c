@@ -12,40 +12,41 @@ struct Student
 
 int gTotalStudents = 0;
 
-
-void inputStudent(struct Student *s);
-float calculateTotal(struct Student s);
-float calculateAverage(struct Student s);
 char assignGrade(float avg);
 void displayStudents(struct Student s[], int n);
-void printStars(int count);
+float calculateAverage(struct Student s);
+float calculateTotal(struct Student s);
+int getValidRollNo();
+float getValidMarks(int subjectNo);
+void inputStudent(struct Student *s);
 void printRollNumbersRecursively(struct Student s[], int index, int n);
+void printStars(int count);
+
 
 int main() 
 {
     struct Student students[50];
-    int n;
+    int numberOfStudents;;
 
     printf("=== Student Performance Analyzer ===\n\n");
 
     printf("Enter number of students: ");
-    scanf("%d", &n);
-    gTotalStudents = n;  
+    scanf("%d", &numberOfStudents);
+    gTotalStudents = numberOfStudents;  
 
 
-    
-    for (int i = 0; i < n; i++) 
+    for (int i = 0; i < numberOfStudents; i++) 
     {
         printf("\n--- Enter details for Student %d ---\n", i + 1);
         inputStudent(&students[i]);
     }
 
     
-    displayStudents(students, n);
+    displayStudents(students, numberOfStudents);
 
     
     printf("\nRoll Numbers (using recursion): ");
-    printRollNumbersRecursively(students, 0, n);
+    printRollNumbersRecursively(students, 0, numberOfStudents);
     printf("\n");
 
     return 0;
@@ -54,19 +55,60 @@ int main()
 
 void inputStudent(struct Student *s) 
 {
-    printf("Enter Roll Number: ");
-    scanf("%d", &s->rollNo);
-    getchar();
+    s->rollNo = getValidRollNo();
 
-    printf("Enter Name: ");
-    scanf(" %[^\n]", s->name);
-    getchar();
+    
+    do 
+    {
+        printf("Enter Name: ");
+        scanf(" %[^\n]", s->name);
+        if (strlen(s->name) == 0)
+        {
+            printf("Name cannot be empty! Please enter again.\n");
+        }
+        if (strlen(s->name) >=50)
+        {
+            printf("Name can be smaller than 50 characters! Please enter again.\n");
+        }
 
+    } while (strlen(s->name) == 0);
+
+    
     for (int i = 0; i < 3; i++) 
     {
-        printf("Enter marks of subject %d: ", i + 1);
-        scanf("%f", &s->marks[i]);
+        s->marks[i] = getValidMarks(i + 1);
     }
+}
+
+
+int getValidRollNo() 
+{
+    int rollNo;
+    do 
+    {
+        printf("Enter Roll Number (positive integer): ");
+        scanf("%d", &rollNo);
+        if (rollNo <= 0) 
+        {
+            printf("Invalid Roll Number! Please enter again.\n");
+        }
+    } while (rollNo <= 0);
+    return rollNo;
+}
+
+
+float getValidMarks(int subjectNo) 
+{
+    float marks;
+    do {
+        printf("Enter marks of subject %d (0-100): ", subjectNo);
+        scanf("%f", &marks);
+        if (marks < 0 || marks > 100) 
+        {
+            printf("Invalid Marks! Please enter between 0 and 100.\n");
+        }
+    } while (marks < 0 || marks > 100);
+    return marks;
 }
 
 
