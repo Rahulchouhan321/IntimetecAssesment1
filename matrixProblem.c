@@ -2,112 +2,152 @@
 #include <stdlib.h>
 #include <time.h>
 
-void printMatrix(int *matrix, int NumberOfRowsOrCols) 
+#define MIN_SONARIMAGE_SIZE 2
+#define MAX_SONARIMAGE_SIZE 10
+#define MIN_SONARIMAGE_VALUE 0
+#define MAX_SONARIMAGE_VALUE 255
+
+void printSonarImageMatrix(int *sonarImage, int sonarImageSize);
+void initializeWithRandomValues(int *sonarImage, int sonarImageSize);
+void rotateSonarImageClockwise(int *sonarImage, int sonarImageSize);
+void transposeMatrix(int *sonarImage, int sonarImageSize);
+void swapElements(int *firstElement, int *secondElement);
+void applySmoothingFilter(int *sonarImage, int sonarImageSize);
+
+int main()
 {
-    for (int i = 0; i < NumberOfRowsOrCols; i++) 
+    int sonarImageSize;
+    printf("Enter matrix size (2-10): ");
+    scanf("%d", &sonarImageSize);
+
+    if (sonarImageSize < MIN_SONARIMAGE_SIZE || sonarImageSize > MAX_SONARIMAGE_SIZE)
     {
-        for (int j = 0; j < NumberOfRowsOrCols; j++)
-            printf("%3d ", *(matrix + i * NumberOfRowsOrCols + j));
+        printf("Invalid matrix size. Must be in range (2-10)");
+        return 0;
+    }
+
+    int sonarImage[sonarImageSize][sonarImageSize];
+
+    printf("Original Randomly Generated Matrix: \n");
+    initializeWithRandomValues((int *)sonarImage, sonarImageSize);
+    printSonarImageMatrix((int *)(sonarImage), sonarImageSize);
+
+    printf("Matrix after 90 degree Clockwise Rotation: \n");
+    rotateSonarImageClockwise((int *)sonarImage, sonarImageSize);
+    printSonarImageMatrix((int *)(sonarImage), sonarImageSize);
+
+    printf("Matrix after Applying 3X3 Smoothing Filter:  \n");
+    applySmoothingFilter((int *)(sonarImage), sonarImageSize);
+    printSonarImageMatrix((int *)(sonarImage), sonarImageSize);
+
+    return 0;
+}
+
+void printSonarImageMatrix(int *sonarImage, int sonarImageSize)
+{
+    for (int rowIndex = 0; rowIndex < sonarImageSize; rowIndex++)
+    {
+        for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
+        {
+            printf("%3d ", *(sonarImage + rowIndex * sonarImageSize + columnIndex));
+        }
+
         printf("\n");
     }
+
     printf("\n");
 }
 
-void rotateMatrix(int *matrix, int NumberOfRowsOrCols) 
+void swapElements(int *firstElement, int *secondElement)
 {
-    int **matrixPtrs = malloc(NumberOfRowsOrCols * NumberOfRowsOrCols * sizeof(int *));
-    for (int i = 0; i < NumberOfRowsOrCols * NumberOfRowsOrCols; i++) 
-    {
-        matrixPtrs[i] = matrix + i;
-    }
-
-    for (int layer = 0; layer < NumberOfRowsOrCols / 2; layer++) 
-    {
-        for (int i = layer; i < NumberOfRowsOrCols - layer - 1; i++) 
-        {
-            int **topPtr   = &matrixPtrs[layer * NumberOfRowsOrCols + i];
-            int **rightPtr  = &matrixPtrs[i * NumberOfRowsOrCols + (NumberOfRowsOrCols - layer - 1)];
-            int **bottomPtr = &matrixPtrs[(NumberOfRowsOrCols - layer - 1) * NumberOfRowsOrCols + (NumberOfRowsOrCols - i - 1)];
-            int **leftPtr   = &matrixPtrs[(NumberOfRowsOrCols - i - 1) * NumberOfRowsOrCols + layer];
-
-            int *tempPtr = *topPtr;
-            *topPtr = *leftPtr;
-            *leftPtr = *bottomPtr;
-            *bottomPtr = *rightPtr;
-            *rightPtr = tempPtr;
-        }
-    }
-
-    int *tempMatrix = malloc(NumberOfRowsOrCols * NumberOfRowsOrCols * sizeof(int));
-    for (int i = 0; i < NumberOfRowsOrCols * NumberOfRowsOrCols; i++) 
-    {
-        tempMatrix[i] = *(matrixPtrs[i]);
-    }
-    for (int i = 0; i < NumberOfRowsOrCols * NumberOfRowsOrCols; i++) 
-    {
-        matrix[i] = tempMatrix[i];
-    }
-
-    free(tempMatrix);
-    free(matrixPtrs);
+    int temporaryStore = *firstElement;
+    *firstElement = *secondElement;
+    *secondElement = temporaryStore;
 }
 
-void smoothingFilter(int *matrix, int NumberOfRowsOrCols) 
+void initializeWithRandomValues(int *sonarImage, int sonarImageSize)
 {
-    int *tempRow = malloc(NumberOfRowsOrCols * sizeof(int));
+    srand(time(0));
 
-    for (int i = 0; i < NumberOfRowsOrCols; i++) 
+    for (int rowIndex = 0; rowIndex < sonarImageSize; rowIndex++)
     {
-        for (int j = 0; j < NumberOfRowsOrCols; j++) 
+        for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
         {
-            int sum = 0, count = 0;
-            for (int di = -1; di <= 1; di++) 
+            *(sonarImage + rowIndex * sonarImageSize + columnIndex) = (rand() % (MAX_SONARIMAGE_VALUE - MIN_SONARIMAGE_VALUE + 1)) + MIN_SONARIMAGE_VALUE;
+        }
+    }
+}
+
+void transposeMatrix(int *sonarImage, int sonarImageSize)
+{
+    for (int rowIndex = 0; rowIndex < sonarImageSize; rowIndex++)
+    {
+        for (int columnIndex = rowIndex + 1; columnIndex < sonarImageSize; columnIndex++)
+        {
+            swapElements((sonarImage + rowIndex * sonarImageSize + columnIndex), (sonarImage + columnIndex * sonarImageSize + rowIndex));
+        }
+    }
+}
+
+void rotateSonarImageClockwise(int *sonarImage, int sonarImageSize)
+{
+    int *startColumn;
+    int *endColumn;
+    transposeMatrix((int *)(sonarImage), sonarImageSize);
+
+    for (int rowIndex = 0; rowIndex < sonarImageSize; rowIndex++)
+    {
+        startColumn = sonarImage + rowIndex * sonarImageSize;
+        endColumn = sonarImage + rowIndex * sonarImageSize + (sonarImageSize - 1);
+
+        while (startColumn < endColumn)
+        {
+            swapElements(startColumn, endColumn);
+            startColumn++;
+            endColumn--;
+        }
+    }
+}
+
+void applySmoothingFilter(int *sonarImage, int sonarImageSize)
+{
+    int *temporaryRow = malloc(sonarImageSize * sizeof(int));
+
+    for (int rowIndex = 0; rowIndex < sonarImageSize; rowIndex++)
+    {
+        for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
+        {
+            int sumOfElements = 0;
+            int totalElements = 0;
+
+            
+            for (int rowOffset = -1; rowOffset <= 1; rowOffset++)
             {
-                for (int dj = -1; dj <= 1; dj++) 
+                for (int colOffset = -1; colOffset <= 1; colOffset++)
                 {
-                    int ni = i + di, nj = j + dj;
-                    if (ni >= 0 && ni < NumberOfRowsOrCols && nj >= 0 && nj < NumberOfRowsOrCols) 
+                    int neighborRow = rowIndex + rowOffset;
+                    int neighborCol = columnIndex + colOffset;
+
+                    
+                    if (neighborRow >= 0 && neighborRow < sonarImageSize &&
+                        neighborCol >= 0 && neighborCol < sonarImageSize)
                     {
-                        sum += *(matrix + ni * NumberOfRowsOrCols + nj);
-                        count++;
+                        sumOfElements += *(sonarImage + neighborRow * sonarImageSize + neighborCol);
+                        totalElements++;
                     }
                 }
             }
-            *(tempRow + j) = sum / count;
+
+            
+            *(temporaryRow + columnIndex) = sumOfElements / totalElements;
         }
 
-        for (int j = 0; j < NumberOfRowsOrCols; j++) 
+       
+        for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
         {
-            *(matrix + i * NumberOfRowsOrCols + j) = *(tempRow + j);
+            *(sonarImage + rowIndex * sonarImageSize + columnIndex) = *(temporaryRow + columnIndex);
         }
     }
 
-    free(tempRow);
-}
-
-int main() {
-    srand(time(NULL));
-    int inputMatrixSize;
-    printf("Enter matrix size (2-10): ");
-    scanf("%d", &inputMatrixSize);
-
-    int *matrix = malloc(inputMatrixSize * inputMatrixSize * sizeof(int));
-
-    for (int i = 0; i < inputMatrixSize; i++)
-        for (int j = 0; j < inputMatrixSize; j++)
-            *(matrix + i * inputMatrixSize + j) = rand() % 256;
-
-    printf("\nOriginal Matrix:\n");
-    printMatrix(matrix, inputMatrixSize);
-
-    rotateMatrix(matrix, inputMatrixSize);
-    printf("Matrix after 90° Clockwise Rotation:\n");
-    printMatrix(matrix, inputMatrixSize);
-
-    smoothingFilter(matrix, inputMatrixSize);
-    printf("Matrix after 3x3 Smoothing Filter:\n");
-    printMatrix(matrix, inputMatrixSize);
-
-    free(matrix);
-    return 0;
+    free(temporaryRow);
 }
