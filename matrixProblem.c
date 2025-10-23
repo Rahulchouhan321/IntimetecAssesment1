@@ -111,43 +111,79 @@ void rotateSonarImageClockwise(int *sonarImage, int sonarImageSize)
 
 void applySmoothingFilter(int *sonarImage, int sonarImageSize)
 {
-    int *temporaryRow = malloc(sonarImageSize * sizeof(int));
+    int originalPreviousRow[sonarImageSize];
+    int originalCurrentRow[sonarImageSize];
+    int *originalPreviousRowPointer = originalPreviousRow;
+    int *originalCurrentRowPointer = originalCurrentRow;
 
     for (int rowIndex = 0; rowIndex < sonarImageSize; rowIndex++)
     {
         for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
         {
+            *(originalCurrentRowPointer + columnIndex) = *(sonarImage + rowIndex * sonarImageSize + columnIndex);
+        }
+
+        for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
+        {
             int sumOfElements = 0;
             int totalElements = 0;
 
-            
-            for (int rowOffset = -1; rowOffset <= 1; rowOffset++)
+            if (rowIndex > 0)
             {
-                for (int colOffset = -1; colOffset <= 1; colOffset++)
+                if (columnIndex > 0)
                 {
-                    int neighborRow = rowIndex + rowOffset;
-                    int neighborCol = columnIndex + colOffset;
+                    sumOfElements += *(originalPreviousRowPointer + columnIndex - 1);
+                    totalElements++;
+                }
+                sumOfElements += *(originalPreviousRowPointer + columnIndex);
+                totalElements++;
 
-                    
-                    if (neighborRow >= 0 && neighborRow < sonarImageSize &&
-                        neighborCol >= 0 && neighborCol < sonarImageSize)
-                    {
-                        sumOfElements += *(sonarImage + neighborRow * sonarImageSize + neighborCol);
-                        totalElements++;
-                    }
+                if (columnIndex < sonarImageSize - 1)
+                {
+                    sumOfElements += *(originalPreviousRowPointer + columnIndex + 1);
+                    totalElements++;
                 }
             }
 
-            
-            *(temporaryRow + columnIndex) = sumOfElements / totalElements;
+            if (columnIndex > 0)
+            {
+                sumOfElements += *(originalCurrentRowPointer + columnIndex - 1);
+                totalElements++;
+            }
+            sumOfElements += *(originalCurrentRowPointer + columnIndex);
+            totalElements++;
+
+            if (columnIndex < sonarImageSize - 1)
+            {
+                sumOfElements += *(originalCurrentRowPointer + columnIndex + 1);
+                totalElements++;
+            }
+
+            if (rowIndex < sonarImageSize - 1)
+            {
+                int *nextRowPointer = sonarImage + (rowIndex + 1) * sonarImageSize;
+
+                if (columnIndex > 0)
+                {
+                    sumOfElements += *(nextRowPointer + columnIndex - 1);
+                    totalElements++;
+                }
+                sumOfElements += *(nextRowPointer + columnIndex);
+                totalElements++;
+
+                if (columnIndex < sonarImageSize - 1)
+                {
+                    sumOfElements += *(nextRowPointer + columnIndex + 1);
+                    totalElements++;
+                }
+            }
+
+            *(sonarImage + rowIndex * sonarImageSize + columnIndex) = sumOfElements / totalElements;
         }
 
-       
         for (int columnIndex = 0; columnIndex < sonarImageSize; columnIndex++)
         {
-            *(sonarImage + rowIndex * sonarImageSize + columnIndex) = *(temporaryRow + columnIndex);
+            *(originalPreviousRowPointer + columnIndex) = *(originalCurrentRowPointer + columnIndex);
         }
     }
-
-    free(temporaryRow);
 }
