@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_PRODUCTS 100
-#define MIN_PRODUCTS 1
-#define MIN_PRODUCT_ID 1
-#define MAX_PRODUCT_ID 10000
-#define MAX_NAME_LEN 50
-#define MIN_PRICE 0.0
-#define MAX_PRICE 100000.0
-#define MIN_QUANTITY 0
-#define MAX_QUANTITY 1000000
+#define MAX_NAME_LEN     50
+#define MAX_PRICE        100000.0
+#define MAX_PRODUCT_ID   10000
+#define MAX_PRODUCTS     100
+#define MAX_QUANTITY     1000000
+#define MIN_PRICE        0.0
+#define MIN_PRODUCT_ID   1
+#define MIN_PRODUCTS     1
+#define MIN_QUANTITY     0
 
 typedef struct Product 
 {
@@ -38,19 +38,31 @@ void  updateQuantity(Product *products, int productsDataSize);
 void  viewProducts(Product *products, int productsDataSize);
 
 
-int main() 
-{
+int main(void) 
+{  
     int initialNumberOfProducts;
     Product *products = NULL;
 
-    printf("Enter initial number of products: ");
-    scanf("%d", &initialNumberOfProducts);
-
-    if (initialNumberOfProducts < MIN_PRODUCTS || initialNumberOfProducts > MAX_PRODUCTS) 
+    do
     {
-        printf("Invalid number of products! Must be between %d and %d.\n", MIN_PRODUCTS, MAX_PRODUCTS);
-        return 0;
-    }
+        printf("Enter initial number of products: ");
+
+        if (scanf("%d", &initialNumberOfProducts) != 1)
+        {
+            printf("Invalid input! Please enter a numeric value.\n");
+            while (getchar() != '\n');
+            initialNumberOfProducts = -1;
+            continue;
+        }
+
+        if (initialNumberOfProducts < MIN_PRODUCTS || initialNumberOfProducts > MAX_PRODUCTS)
+        {
+            printf("Invalid number of products! Must be between %d and %d.\n",
+                                                  MIN_PRODUCTS, MAX_PRODUCTS);
+        }
+
+    } while (initialNumberOfProducts < MIN_PRODUCTS || initialNumberOfProducts > MAX_PRODUCTS);
+
 
     products = (Product *)calloc(initialNumberOfProducts, sizeof(Product));
 
@@ -124,14 +136,28 @@ char *my_strstr(const char *string, const char *substring)
 int inputProductID() 
 {
     int productId;
-    do 
+
+    while (1) 
     {
         printf("Product ID (%d -- %d): ", MIN_PRODUCT_ID, MAX_PRODUCT_ID);
-        scanf("%d", &productId);
-        if (productId < MIN_PRODUCT_ID || productId > MAX_PRODUCT_ID)
-            printf("Invalid Product ID! Try again.\n");
-    } 
-    while (productId < MIN_PRODUCT_ID || productId > MAX_PRODUCT_ID);
+
+        if (scanf("%d", &productId) != 1) 
+        {
+            printf("Invalid input! Please enter a numeric value.\n");
+            while (getchar() != '\n');  
+            continue;
+        }
+
+        if (productId < MIN_PRODUCT_ID || productId > MAX_PRODUCT_ID) 
+        {
+            printf("Invalid Product ID! Must be between %d and %d.\n", 
+                                        MIN_PRODUCT_ID, MAX_PRODUCT_ID);
+            continue;
+        }
+
+        break;
+    }
+
     return productId;
 }
 
@@ -156,41 +182,81 @@ void inputProductName(char *productName)
 float inputProductPrice() 
 {
     float productPrice;
-    do 
+
+    while (1) 
     {
         printf("Price (%.2f -- %.2f): ", MIN_PRICE, MAX_PRICE);
-        scanf("%f", &productPrice);
+
+        if (scanf("%f", &productPrice) != 1) 
+        {
+            printf("Invalid input! Please enter a numeric value.\n");
+            while (getchar() != '\n');
+            continue;
+        }
+
         if (productPrice < MIN_PRICE || productPrice > MAX_PRICE)
-            printf("Invalid Price! Try again.\n");
-    } 
-    while (productPrice < MIN_PRICE || productPrice > MAX_PRICE);
+        {
+            printf("Invalid Price! Must be between %.2f and %.2f.\n",
+                   MIN_PRICE, MAX_PRICE);
+            continue;
+        }
+
+        break;
+    }
+
     return productPrice;
 }
 
 int inputProductQuantity() 
 {
     int productQuantity;
-    do 
+
+    while (1) 
     {
         printf("Quantity (%d -- %d): ", MIN_QUANTITY, MAX_QUANTITY);
-        scanf("%d", &productQuantity);
+
+        if (scanf("%d", &productQuantity) != 1) 
+        {
+            printf("Invalid input! Please enter a numeric value.\n");
+            while (getchar() != '\n');
+            continue;
+        }
+
         if (productQuantity < MIN_QUANTITY || productQuantity > MAX_QUANTITY)
-            printf("Invalid Quantity! Try again.\n");
-    } 
-    while (productQuantity < MIN_QUANTITY || productQuantity > MAX_QUANTITY);
+        {
+            printf("Invalid Quantity! Must be between %d and %d.\n",
+                   MIN_QUANTITY, MAX_QUANTITY);
+            continue;
+        }
+
+        break;
+    }
+
     return productQuantity;
 }
 
 void inputPriceRange(float *lowerPrice, float *higherPrice) 
 {
-    do 
+    while (1) 
     {
         printf("Enter lower and upper price range: ");
-        scanf("%f %f", lowerPrice, higherPrice);
+
+        if (scanf("%f %f", lowerPrice, higherPrice) != 2) 
+        {
+            printf("Invalid input! Please enter two numeric values.\n");
+            while (getchar() != '\n');
+            continue;
+        }
+
         if (*lowerPrice > *higherPrice || *lowerPrice < MIN_PRICE || *higherPrice > MAX_PRICE)
-            printf("Invalid range! Try again.\n");
-    } 
-    while (*lowerPrice > *higherPrice || *lowerPrice < MIN_PRICE || *higherPrice > MAX_PRICE);
+        {
+            printf("Invalid range! Lower must be ≤ upper and both between %.2f and %.2f.\n",
+                   MIN_PRICE, MAX_PRICE);
+            continue;
+        }
+
+        break;
+    }
 }
 
 void inputProductDetails(Product *productPtr) 
@@ -203,7 +269,14 @@ void inputProductDetails(Product *productPtr)
 
 void addProduct(Product **products, int *productsDataSize) 
 {
-    *products = (Product *)realloc(*products, (*productsDataSize + 1) * sizeof(Product));
+     Product *tempPtr = realloc(*products, (*productsDataSize + 1) * sizeof(Product));
+    
+    if (tempPtr == NULL) 
+    {
+        printf("Memory allocation failed! Product not added.\n");
+        return;
+    }
+    *products=tempPtr;
     printf("\nEnter details for new product:\n");
     inputProductDetails(&(*products)[*productsDataSize]);
     (*productsDataSize)++;
@@ -335,7 +408,14 @@ void deleteByID(Product **products, int *productsDataSize)
                 (*products)[j] = (*products)[j + 1];
             }
             (*productsDataSize)--;
-            *products = (Product *)realloc(*products, (*productsDataSize) * sizeof(Product));
+             Product *tempPtr = realloc(*products, (*productsDataSize + 1) * sizeof(Product));
+    
+            if (tempPtr == NULL) 
+            {
+                printf("Memory allocation failed! Product not added.\n");
+                return;
+            }
+            *products=tempPtr;
             printf("Product deleted successfully!\n");
             productFoundChecker = 1;
             break;
