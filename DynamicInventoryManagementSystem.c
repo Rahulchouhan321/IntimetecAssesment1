@@ -408,11 +408,11 @@ void deleteByID(Product **products, int *productsDataSize)
                 (*products)[j] = (*products)[j + 1];
             }
             (*productsDataSize)--;
-             Product *tempPtr = realloc(*products, (*productsDataSize) * sizeof(Product));
-    
+            Product *tempPtr = realloc(*products, (*productsDataSize) * sizeof(Product));
+            
             if (tempPtr == NULL) 
             {
-                printf("Memory allocation failed! Product not added.\n");
+                printf("Memory allocation failed! Product  deleted.\n");
                 return;
             }
             *products=tempPtr;
