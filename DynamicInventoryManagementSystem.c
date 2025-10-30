@@ -408,7 +408,7 @@ void deleteByID(Product **products, int *productsDataSize)
                 (*products)[j] = (*products)[j + 1];
             }
             (*productsDataSize)--;
-             Product *tempPtr = realloc(*products, (*productsDataSize + 1) * sizeof(Product));
+             Product *tempPtr = realloc(*products, (*productsDataSize) * sizeof(Product));
     
             if (tempPtr == NULL) 
             {
