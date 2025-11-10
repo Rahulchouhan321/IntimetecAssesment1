@@ -323,11 +323,9 @@ static int cmd_mkdir(const char *name)
 
 static int cmdWrite(const char *name, const char *payload) 
 {
-    printf("track name 1 %s\n", name);
-    printf("track name 1 %s\n", payload);
     FileNode *tempPtr = findChild(sCmdNode, name);
     if (!tempPtr) 
-    {   printf("track for file not found %s\n", name);
+    {   
         printf("File not found\n"); 
         return 0; 
     }
@@ -422,7 +420,7 @@ static int cmdRmdir(const char *name)
     return 1;
 }
 
-static void cmd_ls(void) {
+static void cmdLs(void) {
     if (!sCmdNode->childHead) { printf("(empty)\n"); return; }
     FileNode *head = sCmdNode->childHead;
     FileNode *cur = head;
@@ -430,18 +428,6 @@ static void cmd_ls(void) {
         if (cur->isDir) printf("%s/\n", cur->name); else printf("%s\n", cur->name);
         cur = cur->next;
     } while (cur != head);
-}
-
-static int cmd_cd(const char *name) {
-    if (strcmp(name, "/") == 0) { sCmdNode = sRootNode; printf("Moved to /\n"); return 1; }
-    if (strcmp(name, "..") == 0) {
-        if (sCmdNode->parent) sCmdNode = sCmdNode->parent; else sCmdNode = sRootNode;
-        return printf("Moved to %s\n", "."), 1;
-    }
-    FileNode *n = findChild(sCmdNode, name);
-    if (!n || !n->isDir) { printf("No such directory\n"); return 0; }
-    sCmdNode = n;
-    return printf("Moved to %s\n", "."), 1;
 }
 
 static void build_abs_path(FileNode *dir, char *out, size_t outsz) 
@@ -466,14 +452,29 @@ static void build_abs_path(FileNode *dir, char *out, size_t outsz)
     if (pos<outsz) out[pos]='\0';
 }
 
-static void cmd_pwd(void) 
+static int cmdCd(const char *name) {
+    if (strcmp(name, ".") == 0) { }
+            else if (strcmp(name, "..") == 0) { 
+                if (sCmdNode->parent) sCmdNode = sCmdNode->parent; else sCmdNode = sRootNode; 
+                char buf[256]; 
+                build_abs_path(sCmdNode, buf, sizeof(buf)); 
+                printf("Moved to %s\n", buf); }
+            else if (strcmp(name, "/") == 0) { sCmdNode = sRootNode; printf("Moved to /\n"); }
+            else {
+                FileNode *n = findChild(sCmdNode, name);
+                if (!n || !n->isDir) printf("No such directory\n");
+                else { sCmdNode = n; char buf[256]; build_abs_path(sCmdNode, buf, sizeof(buf)); printf("Moved to %s\n", buf); }
+            }
+}
+
+static void cmdPwd(void) 
 {
     char buf[1024];
     build_abs_path(sCmdNode, buf, sizeof(buf));
     printf("%s\n", buf);
 }
 
-static void cmd_df(void) 
+static void cmdDf(void) 
 {
     int total = sNumberOfBlocks;
     int freeb = sFreeCount;
@@ -493,7 +494,7 @@ static char* trim(char *s)
     return s;
 }
 
-static const char* next_token(char **p) 
+static const char* nextToken(char **p) 
 {
     static char buf[4096];
     buf[0] = '\0';
@@ -524,7 +525,7 @@ static void prompt(void)
     fflush(stdout);
 }
 
-static void repl(void) {
+static void applycmd(void) {
     printf("Compact VFS - ready. Type 'exit' to quit.\n");
     char line[8192];
     for (;;) {
@@ -534,64 +535,48 @@ static void repl(void) {
         if (!*s) continue;
 
         char *cursor = s;
-        const char *cmd = next_token(&cursor);
+        const char *cmd = nextToken(&cursor);
 
         if (strcmp(cmd, "mkdir") == 0) {
-            const char *name = next_token(&cursor);
+            const char *name = nextToken(&cursor);
             if (!*name) { printf("Usage: mkdir <name>\n"); continue; }
             cmd_mkdir(name);
         } else if (strcmp(cmd, "create") == 0) {
-            const char *name = next_token(&cursor);
-            printf("track name 2 %s\n", name);
+            const char *name = nextToken(&cursor);
             if (!*name) { printf("Usage: create <name>\n"); continue; }
             cmd_create(name);
         } else if (strcmp(cmd, "write") == 0) 
         {
-            const char *name = next_token(&cursor);
+            const char *name = nextToken(&cursor);
             char *filename=malloc(strlen(name)+1);
             strcpy(filename,name);
-
-            printf("track name 2 %s\n", name);
-            const char *payload = next_token(&cursor);
+            const char *payload = nextToken(&cursor);
             if (!*name) { printf("Usage: write <name> ""data""\n"); continue; }
             if (!*payload) payload = "";
-            printf("track payload 3 %s\n", payload);
-            printf("track name 3 %s\n", name);
             cmdWrite(filename, payload);
+            free(filename);
         } else if (strcmp(cmd, "read") == 0) {
-            const char *name = next_token(&cursor);
+            const char *name = nextToken(&cursor);
             if (!*name) { printf("Usage: read <name>\n"); continue; }
             cmdRead(name);
         } else if (strcmp(cmd, "delete") == 0) {
-            const char *name = next_token(&cursor);
+            const char *name = nextToken(&cursor);
             if (!*name) { printf("Usage: delete <name>\n"); continue; }
             cmdDelete(name);
         } else if (strcmp(cmd, "rmdir") == 0) {
-            const char *name = next_token(&cursor);
+            const char *name = nextToken(&cursor);
             if (!*name) { printf("Usage: rmdir <name>\n"); continue; }
-            printf("track name rmdir %s\n", name);
             cmdRmdir(name);
         } else if (strcmp(cmd, "ls") == 0) {
-            cmd_ls();
+            cmdLs();
         } else if (strcmp(cmd, "cd") == 0) {
-            const char *name = next_token(&cursor);
+            const char *name = nextToken(&cursor);
             if (!*name) { printf("Usage: cd <dir>|..|/\n"); continue; }
-            if (strcmp(name, ".") == 0) { /* no-op */ }
-            else if (strcmp(name, "..") == 0) { 
-                if (sCmdNode->parent) sCmdNode = sCmdNode->parent; else sCmdNode = sRootNode; 
-                char buf[256]; 
-                build_abs_path(sCmdNode, buf, sizeof(buf)); 
-                printf("Moved to %s\n", buf); }
-            else if (strcmp(name, "/") == 0) { sCmdNode = sRootNode; printf("Moved to /\n"); }
-            else {
-                FileNode *n = findChild(sCmdNode, name);
-                if (!n || !n->isDir) printf("No such directory\n");
-                else { sCmdNode = n; char buf[256]; build_abs_path(sCmdNode, buf, sizeof(buf)); printf("Moved to %s\n", buf); }
-            }
+            cmdCd(name);
         } else if (strcmp(cmd, "pwd") == 0) {
-            cmd_pwd();
+            cmdPwd();
         } else if (strcmp(cmd, "df") == 0) {
-            cmd_df();
+            cmdDf();
         } else if (strcmp(cmd, "exit") == 0) {
             printf("Memory released. Exiting program...\n");
             break;
@@ -604,7 +589,7 @@ int main(void)
 {
     int blocks = DEFAULT_NUM_BLOCKS;
     initDiskAndVfs(blocks);
-    repl();
+    applycmd();
     freeVFS();
     return 0;
 }
