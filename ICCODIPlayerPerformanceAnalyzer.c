@@ -2,14 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "players_data.h"
 
-
 #define MAX_NAME_LEN 50
+#define ROLE_ALLROUND 3
 #define ROLE_BATSMAN 1
 #define ROLE_BOWLER 2
-#define ROLE_ALLROUND 3
 
 typedef struct PlayerNode {
     int PlayerId;
@@ -43,7 +41,6 @@ typedef struct TeamNode {
     PlayerNode** allrounders;
     int allrounders_count;
     int allrounders_capacity;
-
 } TeamNode;
 typedef struct HeapNode {
     int t;  
@@ -58,6 +55,37 @@ typedef struct {
 } SimpleHeap;
 
 static TeamNode teamsGlobal[20];
+
+int getInt() {
+    int x;
+    char ch;
+
+    while (1) 
+    {
+        if (scanf("%d", &x) == 1) 
+        {
+            while ((ch = getchar()) != '\n' && ch != EOF);
+
+            return x; 
+        }
+        printf("Invalid input! Try again.\n");   
+        while ((ch = getchar()) != '\n' && ch != EOF);
+    }
+}
+float getFloat() {
+    float x;
+    char ch;
+    while (1) 
+    {
+        if (scanf("%f", &x) == 1) 
+        {
+            while ((ch = getchar()) != '\n' && ch != EOF);
+            return x;
+        }
+        printf("Invalid input! Try again.\n");
+        while ((ch = getchar()) != '\n' && ch != EOF);
+    }
+}
 
 int roleStringToInt(const char* r) {
     if (strcmp(r, "Batsman") == 0) return ROLE_BATSMAN;
@@ -78,6 +106,10 @@ double computePerformanceIndexForNode(const PlayerNode* PlayerPtr) {
 
 PlayerNode* createNodeFromHeaderPlayer(const Player* headPtr) {
     PlayerNode* n = malloc(sizeof(PlayerNode));
+    if (!n) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);   
+    }
     strcpy(n->Name, headPtr->name);
     strcpy(n->TeamName, headPtr->team);
     n->PlayerId = headPtr->id;
@@ -95,6 +127,10 @@ PlayerNode* createNodeFromHeaderPlayer(const Player* headPtr) {
 PlayerNode* createNodeFromInput(int id, const char* name, const char* team, int role,
                                 int runs, float avg, float sr, int wk, float er) {
     PlayerNode* n = malloc(sizeof(PlayerNode));
+    if (!n) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);   
+    }
     strcpy(n->Name, name);
     strcpy(n->TeamName, team);
     n->PlayerId = id;
@@ -115,10 +151,15 @@ void ensureCapacity(PlayerNode*** playerArray, int* cap, int needed) {
     while (newcap < needed) newcap *= 2;
 
     PlayerNode** newarr = malloc(newcap * sizeof(PlayerNode*));
+    if (!newarr) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);   
+    }
     if (*playerArray) memcpy(newarr, *playerArray, sizeof(PlayerNode*) * (*cap));
     free(*playerArray);
     *playerArray = newarr;
     *cap = newcap;
+    
 }
 
 void insertIntoSortedArray(PlayerNode*** playerArray, int* size, int* cap, PlayerNode* n) {
@@ -250,7 +291,7 @@ void printPlayerNode(PlayerNode* playerPtr, int showTeam) {
 void addPlayerToTeamInteractive() {
     int teamId;
     printf("Enter Team ID: ");
-    scanf("%d", &teamId);
+    teamId=getInt();
 
     int idx = findTeamIndexById(teamId);
     if (idx == -1) { printf("Invalid team\n"); return; }
@@ -262,20 +303,25 @@ void addPlayerToTeamInteractive() {
     char name[64];
 
     printf("Player ID: ");
-    scanf("%d", &pid);
+    pid=getInt();
     getchar();
     printf("Name: ");
     fgets(name, 64, stdin);
     name[strcspn(name, "\n")] = 0;
 
     printf("Role (1=Batsman, 2=Bowler, 3=All-rounder): ");
-    scanf("%d", &role);
+    role=getInt();
 
-    printf("Total Runs: "); scanf("%d", &runs);
-    printf("Batting Average: "); scanf("%f", &avg);
-    printf("Strike Rate: "); scanf("%f", &sr);
-    printf("Wickets: "); scanf("%d", &wk);
-    printf("Economy Rate: "); scanf("%f", &er);
+    printf("Total Runs: "); 
+    runs=getInt();
+    printf("Batting Average: "); 
+    avg=getFloat();
+    printf("Strike Rate: "); 
+    sr=getFloat();
+    printf("Wickets: ");
+    wk=getInt();
+    printf("Economy Rate: "); 
+    er=getFloat();
 
     PlayerNode* playerNode = createNodeFromInput(pid, name, teamNode->Name, role, runs, avg, sr, wk, er);
 
@@ -299,7 +345,7 @@ void addPlayerToTeamInteractive() {
 void displayPlayersOfTeam() {
     int teamId;
     printf("Enter Team ID: ");
-    scanf("%d", &teamId);
+    teamId=getInt();
 
     int idx = findTeamIndexById(teamId);
     if (idx == -1) { printf("Invalid Team\n"); return; }
@@ -348,9 +394,12 @@ void displayTeamsByAvgSR() {
 
 void displayTopKOfTeamByRole() {
     int teamId, role, K;
-    printf("Team ID: "); scanf("%d", &teamId);
-    printf("Role (1/2/3): "); scanf("%d", &role);
-    printf("K: "); scanf("%d", &K);
+    printf("Team ID: ");
+    teamId=getInt();
+    printf("Role (1/2/3): "); 
+    role=getInt();
+    printf("K: ");
+    K=getInt();
 
     int idx = findTeamIndexById(teamId);
     if (idx == -1) { printf("Invalid Team\n"); return; }
@@ -373,6 +422,11 @@ void displayTopKOfTeamByRole() {
 void heapInit(SimpleHeap* h) {
     h->cap = teamCount + 5;
     h->data = malloc(sizeof(HeapNode)*h->cap);
+    if (!h->data) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);   
+
+    }
     h->size = 0;
 }
 
@@ -384,6 +438,10 @@ void heapPush(SimpleHeap* h, HeapNode x) {
     if (h->size == h->cap) {
         h->cap *= 2;
         h->data = realloc(h->data, sizeof(HeapNode)*h->cap);
+        if (!h->data) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);   
+    }
     }
     h->data[h->size] = x;
     int i = h->size++;
@@ -422,7 +480,7 @@ void heapFree(SimpleHeap* h) {
 void displayAllTeamsByRole() {
     int role;
     printf("Role (1/2/3): ");
-    scanf("%d", &role);
+    role=getInt();
 
     SimpleHeap h;
     heapInit(&h);
@@ -509,10 +567,10 @@ int main() {
 
     while (1) {
         printMenu();
-        int ch;
-        scanf("%d", &ch);
+        int choice;
+        scanf("%d", &choice);
 
-        switch (ch) {
+        switch (choice) {
             case 1: addPlayerToTeamInteractive(); break;
             case 2: displayPlayersOfTeam(); break;
             case 3: displayTeamsByAvgSR(); break;
