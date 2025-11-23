@@ -8,161 +8,230 @@ typedef struct Node
 {
     int key;
     char value[100];
-    struct Node *prev, *next;
+    struct Node *prevPtr, *nextPtr;
 } Node;
+
+typedef struct HashEntry 
+{
+    int key;
+    Node *nodePtr;
+    struct HashEntry *nextPtr;
+} HashEntry;
 
 typedef struct 
 {
     int capacity;
     int size;
-    Node *head;
-    Node *tail;
-    Node *hash[HASH_SIZE];
+    Node *headPtr;
+    Node *tailPtr;
+    HashEntry *hashTable[HASH_SIZE];
 } LRUCache;
 
-int getInt() 
+int hashFunction(int key) 
 {
-    int intdata;
-    char chardata;
-    while (1) {
-        if (scanf("%d", &intdata) == 1) {
-            while ((chardata = getchar()) != '\n' && chardata != EOF);
-            return intdata;
-        }
-        printf("Invalid integer! Try again.\n");
-        while ((chardata = getchar()) != '\n' && chardata != EOF);
-    }
-}
-
-void getString(char *buffer, int size) {
-    char charData;
-    while (1) {
-        if (scanf("%99s", buffer) == 1) {
-            while ((charData = getchar()) != '\n' && charData != EOF);
-            return;
-        }
-        printf("Invalid string! Try again.\n");
-        while ((charData = getchar()) != '\n' && charData != EOF);
-    }
-}
-
-void getCommand(char *cmdPtr) {
-    char charData;
-    while (1) {
-        if (scanf("%49s", cmdPtr) == 1) {
-            while ((charData = getchar()) != '\n' && charData != EOF);
-            return;
-        }
-        printf("Invalid command! Try again.\n");
-        while ((charData = getchar()) != '\n' && charData != EOF);
-    }
-}
-
-int hashFunction(int key) {
     return (key % HASH_SIZE + HASH_SIZE) % HASH_SIZE;
 }
 
-Node* createNode(int key, const char *value) {
-    Node *n = malloc(sizeof(Node));
-    n->key = key;
-    strcpy(n->value, value);
-    n->prev = n->next = NULL;
-    return n;
-}
-
-LRUCache* createCache(int capacity) {
-    LRUCache *cache = malloc(sizeof(LRUCache));
-    cache->capacity = capacity;
-    cache->size = 0;
-    cache->head = cache->tail = NULL;
-    for(int i=0;i<HASH_SIZE;i++) cache->hash[i]=NULL;
-    return cache;
-}
-
-void addToHead(LRUCache *cache, Node *node) {
-    node->prev = NULL;
-    node->next = cache->head;
-    if(cache->head) cache->head->prev = node;
-    cache->head = node;
-    if(cache->tail == NULL) cache->tail = node;
-}
-
-void removeNode(LRUCache *cache, Node *node) {
-    if(node->prev) node->prev->next = node->next;
-    else cache->head = node->next;
-    if(node->next) node->next->prev = node->prev;
-    else cache->tail = node->prev;
-}
-
-void moveToHead(LRUCache *cache, Node *node) {
-    removeNode(cache, node);
-    addToHead(cache, node);
-}
-
-void removeTail(LRUCache *cache) {
-    Node *lru = cache->tail;
-    int index = hashFunction(lru->key);
-    cache->hash[index] = NULL;
-    removeNode(cache, lru);
-    free(lru);
-    cache->size--;
-}
-
-char* get(LRUCache *cache, int key) {
+HashEntry* hashmapGet(LRUCache *cachePtr, int key) 
+{
     int index = hashFunction(key);
-    Node *node = cache->hash[index];
-    if(node == NULL) return NULL;
-    moveToHead(cache, node);
-    return node->value;
+    HashEntry *entryPtr = cachePtr->hashTable[index];
+
+    while (entryPtr) 
+    {
+        if (entryPtr->key == key)
+            return entryPtr;
+
+        entryPtr = entryPtr->nextPtr;
+    }
+    return NULL;
 }
 
-void put(LRUCache *cache, int key, const char *value) {
+void hashmapPut(LRUCache *cachePtr, int key, Node *nodePtr) 
+{
     int index = hashFunction(key);
-    Node *node = cache->hash[index];
+    HashEntry *entryPtr = cachePtr->hashTable[index];
 
-    if(node != NULL) {
-        strcpy(node->value, value);
-        moveToHead(cache, node);
+    while (entryPtr) 
+    {
+        if (entryPtr->key == key) 
+        {
+            entryPtr->nodePtr = nodePtr;
+            return;
+        }
+        entryPtr = entryPtr->nextPtr;
+    }
+
+    HashEntry *newEntryPtr = malloc(sizeof(HashEntry));
+    newEntryPtr->key = key;
+    newEntryPtr->nodePtr = nodePtr;
+    newEntryPtr->nextPtr = cachePtr->hashTable[index];
+    cachePtr->hashTable[index] = newEntryPtr;
+}
+
+void hashmapRemove(LRUCache *cachePtr, int key) 
+{
+    int index = hashFunction(key);
+    HashEntry *entryPtr = cachePtr->hashTable[index];
+    HashEntry *prevPtr = NULL;
+
+    while (entryPtr) 
+    {
+        if (entryPtr->key == key) 
+        {
+            if (prevPtr) prevPtr->nextPtr = entryPtr->nextPtr;
+            else cachePtr->hashTable[index] = entryPtr->nextPtr;
+
+            free(entryPtr);
+            return;
+        }
+        prevPtr = entryPtr;
+        entryPtr = entryPtr->nextPtr;
+    }
+}
+
+Node* createNode(int key, const char *value) 
+{
+    Node *newNodePtr = malloc(sizeof(Node));
+    newNodePtr->key = key;
+    strcpy(newNodePtr->value, value);
+    newNodePtr->prevPtr = newNodePtr->nextPtr = NULL;
+    return newNodePtr;
+}
+
+LRUCache* createCache(int capacity) 
+{
+    LRUCache *cachePtr = malloc(sizeof(LRUCache));
+    cachePtr->capacity = capacity;
+    cachePtr->size = 0;
+    cachePtr->headPtr = NULL;
+    cachePtr->tailPtr = NULL;
+
+    for (int i = 0; i < HASH_SIZE; i++)
+        cachePtr->hashTable[i] = NULL;
+
+    return cachePtr;
+}
+
+void addToHead(LRUCache *cachePtr, Node *nodePtr) 
+{
+    nodePtr->prevPtr = NULL;
+    nodePtr->nextPtr = cachePtr->headPtr;
+
+    if (cachePtr->headPtr)
+        cachePtr->headPtr->prevPtr = nodePtr;
+
+    cachePtr->headPtr = nodePtr;
+
+    if (cachePtr->tailPtr == NULL)
+        cachePtr->tailPtr = nodePtr;
+}
+
+void removeNode(LRUCache *cachePtr, Node *nodePtr) 
+{
+    if (nodePtr->prevPtr)
+        nodePtr->prevPtr->nextPtr = nodePtr->nextPtr;
+    else
+        cachePtr->headPtr = nodePtr->nextPtr;
+
+    if (nodePtr->nextPtr)
+        nodePtr->nextPtr->prevPtr = nodePtr->prevPtr;
+    else
+        cachePtr->tailPtr = nodePtr->prevPtr;
+
+    nodePtr->prevPtr = NULL;
+    nodePtr->nextPtr = NULL;
+}
+
+void moveToHead(LRUCache *cachePtr, Node *nodePtr) 
+{
+    removeNode(cachePtr, nodePtr);
+    addToHead(cachePtr, nodePtr);
+}
+
+void removeTail(LRUCache *cachePtr) 
+{
+    Node *lruNodePtr = cachePtr->tailPtr;
+
+    hashmapRemove(cachePtr, lruNodePtr->key);
+    removeNode(cachePtr, lruNodePtr);
+    free(lruNodePtr);
+    cachePtr->size--;
+}
+
+char* get(LRUCache *cachePtr, int key) 
+{
+    HashEntry *entryPtr = hashmapGet(cachePtr, key);
+
+    if (entryPtr == NULL)
+        return NULL;
+
+    moveToHead(cachePtr, entryPtr->nodePtr);
+    return entryPtr->nodePtr->value;
+}
+
+void put(LRUCache *cachePtr, int key, const char *value) 
+{
+    HashEntry *entryPtr = hashmapGet(cachePtr, key);
+    if (entryPtr != NULL) 
+    {
+        strcpy(entryPtr->nodePtr->value, value);
+        moveToHead(cachePtr, entryPtr->nodePtr);
         return;
     }
 
-    Node *newNode = createNode(key, value);
-    cache->hash[index] = newNode;
-    addToHead(cache, newNode);
-    cache->size++;
+    Node *newNodePtr = createNode(key, value);
+    addToHead(cachePtr, newNodePtr);
+    hashmapPut(cachePtr, key, newNodePtr);
+    cachePtr->size++;
 
-    if(cache->size > cache->capacity) removeTail(cache);
+    if (cachePtr->size > cachePtr->capacity)
+        removeTail(cachePtr);
+}
+void readLine(char *buffer, int size) 
+{
+    fgets(buffer, size, stdin);
+    buffer[strcspn(buffer, "\n")] = '\0';  
 }
 
-int main() {
-    LRUCache *cache = NULL;
-    char command[50], value[100];
+int main() 
+{
+    LRUCache *cachePtr = NULL;
+    char inputLine[200];
 
-    while(1) {
-        getCommand(command);
-
-        if(strcmp(command, "createCache") == 0) {
-            int cap = getInt();
-            cache = createCache(cap);
+    while (1) 
+    {
+        readLine(inputLine, 200);
+        char command[50];
+        int key, cap;
+        char value[100];
+        if (sscanf(inputLine, "%49s %d", command, &cap) == 2 &&
+            strcmp(command, "createCache") == 0) 
+        {
+            cachePtr = createCache(cap);
+            printf("LRU Cache of capacity %d created.\n", cap);
         }
-        else if(strcmp(command, "put") == 0) {
-            int key = getInt();
-            getString(value, 100);
-            put(cache, key, value);
+        else if (sscanf(inputLine, "%49s %d %99s", command, &key, value) == 3 &&
+                                                 strcmp(command, "put") == 0)
+        {
+            put(cachePtr, key, value);
         }
-        else if(strcmp(command, "get") == 0) {
-            int key = getInt();
-            char *res = get(cache, key);
-            if(res) printf("%s\n", res);
-            else printf("NULL\n");
+        else if(sscanf(inputLine, "%49s %d", command, &key) == 2 &&
+                                    strcmp(command, "get") == 0)
+        {
+            char *res = get(cachePtr, key);
+            printf("%s\n", res ? res : "NULL");
         }
-        else if(strcmp(command, "exit") == 0) {
+        else if (strcmp(inputLine, "exit") == 0) 
+        {
             break;
         }
-        else {
+        else 
+        {
             printf("Invalid command! Try again.\n");
         }
     }
 
     return 0;
 }
+
