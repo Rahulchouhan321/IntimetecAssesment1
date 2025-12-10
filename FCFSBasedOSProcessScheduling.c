@@ -32,6 +32,7 @@ typedef struct ProcessControlBlock {
     int completionTime;
 
     State state;
+    int freed;
     struct ProcessControlBlock *next;
 } ProcessControlBlock;
 
@@ -137,6 +138,9 @@ ProcessControlBlock* getProcessFromMap(int processId) {
     }
     return NULL;
 }
+int pidExists(int pid) {
+    return getProcessFromMap(pid) != NULL;
+}
 
 void addKillEvent(int processId, int time) {
     gKillEvents[gKillEventCount].processId = processId;
@@ -174,18 +178,22 @@ void applyKillEventsForTime(int time) {
 }
 
 void updateWaitingQueue() {
+    
     ProcessControlBlock *current = gWaitingQueue.front;
     ProcessControlBlock *previous = NULL;
 
     while (current) {
         ProcessControlBlock *next = current->next;
-
+         if (current->state == KILLED) {
+            current = next;
+            continue;
+        }
         current->remainingIo--;
         current->ioUsed++;
 
         if (current->remainingIo <= 0) {
             current->state = READY;
-            current->execSinceStart = 0;
+             
 
             if (previous == NULL) {
                 gWaitingQueue.front = next;
@@ -210,9 +218,19 @@ void updateWaitingQueue() {
 }
 
 void simulateTick() {
-    sleep(1);
+    
+    if (gRunningProcess && gRunningProcess->state == KILLED) 
+    {
+     gRunningProcess = NULL;
+    return;
+    } 
+    if (gTickDurationSeconds > 0) {
+    sleep(gTickDurationSeconds);
+}
 
     updateWaitingQueue();
+    if (!gRunningProcess) return;
+    if (gRunningProcess->state == KILLED) return;
 
     if (gRunningProcess) {
         gRunningProcess->cpuUsed++;
@@ -221,7 +239,7 @@ void simulateTick() {
         printf("[time %d] Running PID %d (cpuUsed=%d)\n",
                gCurrentTime, gRunningProcess->processId, gRunningProcess->cpuUsed);
 
-        if (gRunningProcess->ioDuration > 0 &&
+        if ( gRunningProcess->state != KILLED && gRunningProcess->ioDuration > 0 &&
             gRunningProcess->execSinceStart == gRunningProcess->ioStart && gRunningProcess->ioUsed ==0) {
 
             gRunningProcess->remainingIo = gRunningProcess->ioDuration;
@@ -247,14 +265,20 @@ void simulateTick() {
 }
 
 void freePcb(ProcessControlBlock *pcb) {
-    if (pcb) free(pcb);
+    if (!pcb) return;
+
+    if (pcb->freed) return;   
+
+    pcb->freed = 1;           
+    free(pcb);
 }
+
 
 void freeQueue(Queue *queue) {
     ProcessControlBlock *current = queue->front;
     while (current) {
         ProcessControlBlock *next = current->next;
-        freePcb(current);
+        freePcb(current);  
         current = next;
     }
     queue->front = queue->rear = NULL;
@@ -266,6 +290,7 @@ void freeHashMap() {
         while (current) {
             HashNode *next = current->next;
             free(current);
+
             current = next;
         }
         gHashTable[i] = NULL;
@@ -280,7 +305,7 @@ void printFinalResults() {
 
     while (current) {
         int turnaround = current->completionTime - current->arrivalTime;
-        int waiting = turnaround - current->burstTime;
+        int waiting = turnaround - current->cpuUsed - current->ioUsed;
         if (waiting < 0) waiting = 0;
 
         printf("%d\t%s\t%d\t%d\t%d\t\t%d",
@@ -332,6 +357,10 @@ int readProcessInput(ProcessControlBlock *pcb) {
             printf("Invalid values. Try again.\n");
             continue;
         }
+        if (pidExists(pid)) {
+            printf("Process ID %d already exists. Try again.\n", pid);
+            continue;
+        }
 
         int ioStart, ioDuration;
 
@@ -360,6 +389,7 @@ int readProcessInput(ProcessControlBlock *pcb) {
         return 1;
     }
 }
+
 int readKillEvent(int *processId, int *time) {
     char line[128];
 
@@ -404,8 +434,6 @@ int readKillEvent(int *processId, int *time) {
     }
 }
 
-
-
 int main(void) {
     initQueue(&gReadyQueue);
     initQueue(&gWaitingQueue);
@@ -413,6 +441,7 @@ int main(void) {
 
     printf("Enter number of processes: ");
     scanf("%d", &gTotalProcesses);
+    getchar();
 
     for (int i = 0; i < gTotalProcesses; i++) {
         ProcessControlBlock *pcb = (ProcessControlBlock *)malloc(sizeof(ProcessControlBlock));
@@ -440,22 +469,30 @@ int main(void) {
 
     while (gTerminatedProcesses < gTotalProcesses) {
         applyKillEventsForTime(gCurrentTime);
+        if (!gRunningProcess) 
+        {
 
-        if (!gRunningProcess) {
-            gRunningProcess = dequeueProcess(&gReadyQueue);
-            if (gRunningProcess) {
+            ProcessControlBlock *p = dequeueProcess(&gReadyQueue);   
+            while (p && p->state == KILLED) {
+                p = dequeueProcess(&gReadyQueue);
+            }
+
+            gRunningProcess = p;
+
+            if (gRunningProcess) 
+            {
                 gRunningProcess->state = RUNNING;
                 printf("[time %d] PID %d scheduled to RUN\n",
-                       gCurrentTime, gRunningProcess->processId);
+                gCurrentTime, gRunningProcess->processId);
             }
         }
-
+       
         if (!gRunningProcess && isQueueEmpty(&gWaitingQueue)) {
             
             gCurrentTime++;
             continue;
         }
-
+ 
         simulateTick();
         gCurrentTime++;
     }
